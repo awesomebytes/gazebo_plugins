@@ -393,16 +393,17 @@ bool GazeboRosOpenniKinect::FillDepthImageHelper(
     uint32_t rows_arg, uint32_t cols_arg,
     uint32_t step_arg, void* data_arg)
 {
-  image_msg.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
+  //TODO: make the type optional
+  image_msg.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
   image_msg.height = rows_arg;
   image_msg.width = cols_arg;
-  image_msg.step = sizeof(float) * cols_arg;
-  image_msg.data.resize(rows_arg * cols_arg * sizeof(float));
+  image_msg.step = sizeof(uint16_t) * cols_arg;
+  image_msg.data.resize(rows_arg * cols_arg * sizeof(uint16_t));
   image_msg.is_bigendian = 0;
 
   const float bad_point = std::numeric_limits<float>::quiet_NaN();
 
-  float* dest = (float*)(&(image_msg.data[0]));
+  uint16_t* dest = (uint16_t*)(&(image_msg.data[0]));
   float* toCopyFrom = (float*)data_arg;
   int index = 0;
 
@@ -416,11 +417,15 @@ bool GazeboRosOpenniKinect::FillDepthImageHelper(
       if (depth > this->point_cloud_cutoff_ &&
           depth < this->point_cloud_cutoff_max_)
       {
-        dest[i + j * cols_arg] = depth;
+        // http://www.ros.org/reps/rep-0118.html#id4
+        // 16UC1 is in millimeters...
+        dest[i + j * cols_arg] = depth * 1000.0;
       }
       else //point in the unseeable range
       {
-        dest[i + j * cols_arg] = bad_point;
+        // http://www.ros.org/reps/rep-0118.html#id4
+        // invalids are just 0's
+        dest[i + j * cols_arg] = 0;//bad_point;
       }
     }
   }
